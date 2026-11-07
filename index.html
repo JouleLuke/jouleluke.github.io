@@ -68,6 +68,24 @@ h1 {
   letter-spacing: 0.02em;
   text-decoration: none;
 }
+
+/* Phones: stack centered, and let the beam run edge to edge as a horizon
+   between the wordmark and the contact link. */
+@media (max-width: 640px) {
+  main { --pad: 20px; padding: 40px var(--pad); }
+  .row {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 0;
+  }
+  h1 { font-size: clamp(40px, 13vw, 52px); }
+  .beam {
+    flex: none;
+    align-self: stretch;
+    margin: 0 calc(-1 * var(--pad));
+    height: 150px;
+  }
+}
 </style>
 </head>
 <body>
