@@ -73,10 +73,12 @@ h1 {
 /* Phones: stack centered, and let the beam run edge to edge as a horizon
    between the wordmark and the contact link. */
 @media (max-width: 640px) {
-  main { --pad: 20px; padding: 40px var(--pad); }
+  main { --pad: 20px; position: relative; padding: 40px var(--pad); }
   .row {
     flex-direction: column;
     gap: 0;
+    /* holds the contact link's 44px slot so the wordmark and beam stay put */
+    padding-bottom: 44px;
   }
   h1 { font-size: clamp(40px, 13vw, 52px); }
   .beam {
@@ -84,6 +86,13 @@ h1 {
     align-self: stretch;
     margin: 0 calc(-1 * var(--pad));
     height: 150px;
+  }
+  /* contact link sits near the bottom of the screen */
+  .contact {
+    position: absolute;
+    left: 50%;
+    bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
   }
 }
 </style>
