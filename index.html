@@ -91,7 +91,7 @@ h1 {
   .contact {
     position: absolute;
     left: 50%;
-    bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
     transform: translateX(-50%);
   }
 }
@@ -128,8 +128,8 @@ h1 {
   const EDGE_DAMP = 0.08;   // extra damping near the ends so waves fade out
   const EDGE_FRAC = 0.2;    //   instead of echoing back (fraction of length)
   const MIN_GAIN = 0.75;    // floor for strength in short boxes, relative to desktop
-  const PHONE_GAIN = 0.85;  // phone layout (<=640px wide): strength relative to desktop
-  const PHONE_DAMP = 0.0045; // phone layout: lighter damping for more rebounds
+  const PHONE_GAIN = 0.9;   // phone layout (<=640px wide): strength relative to desktop
+  const PHONE_DAMP = 0.0035; // phone layout: lighter damping for more rebounds
   const SUBSTEPS_PER_SEC = 240; // fixed physics rate, independent of refresh rate
 
   let W = 0, H = 0, N = 0, y, v, acc, damp, grads, gradW = -1, gain = 1, scale = 1;
