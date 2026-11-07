@@ -118,7 +118,9 @@ h1 {
   const DAMP = 0.006;       // lower = more rebounds before it settles
   const EDGE_DAMP = 0.08;   // extra damping near the ends so waves fade out
   const EDGE_FRAC = 0.2;    //   instead of echoing back (fraction of length)
-  const MIN_GAIN = 0.75;    // phone strength relative to desktop
+  const MIN_GAIN = 0.75;    // floor for strength in short boxes, relative to desktop
+  const PHONE_GAIN = 0.85;  // phone layout (<=640px wide): strength relative to desktop
+  const PHONE_DAMP = 0.0045; // phone layout: lighter damping for more rebounds
   const SUBSTEPS_PER_SEC = 240; // fixed physics rate, independent of refresh rate
 
   let W = 0, H = 0, N = 0, y, v, acc, damp, grads, gradW = -1, gain = 1, scale = 1;
@@ -134,17 +136,20 @@ h1 {
     W = w;
     H = h;
     scale = Math.max(0.4, Math.min(1, h / 360));
-    gain = Math.max(MIN_GAIN, scale);
+    const phone = !!(window.matchMedia && matchMedia("(max-width: 640px)").matches);
+    gain = phone ? PHONE_GAIN : Math.max(MIN_GAIN, scale);
+    const baseDamp = phone ? PHONE_DAMP : DAMP;
     const n = Math.max(60, Math.min(420, Math.round(w / 4)));
     if (!y || y.length !== n) {
       y = new Float32Array(n);
       v = new Float32Array(n);
       acc = new Float32Array(n);
       damp = new Float32Array(n);
-      for (let i = 0; i < n; i++) {
-        const e = Math.max(0, 1 - Math.min(i, n - 1 - i) / ((n - 1) * EDGE_FRAC));
-        damp[i] = DAMP + EDGE_DAMP * e * e;
-      }
+    }
+    // Recomputed on every resize: the layout (phone vs not) can change on rotate.
+    for (let i = 0; i < n; i++) {
+      const e = Math.max(0, 1 - Math.min(i, n - 1 - i) / ((n - 1) * EDGE_FRAC));
+      damp[i] = baseDamp + EDGE_DAMP * e * e;
     }
     N = n;
   }
