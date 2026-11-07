@@ -107,14 +107,15 @@ h1 {
   // Feel. Tuned for a 360px-tall beam box. In shorter boxes (phones) forces
   // are scaled by `gain` (never below MIN_GAIN) and the pointer's vertical
   // reach by `scale`, so a finger near the line doesn't fling it.
-  const TAP = 0.4;          // pluck strength on click/tap
+  const TAP = 0.6;          // pluck strength on click/tap
   const TAP_WIDTH = 110;    // px; wider = longer, smoother waves
-  const IDLE = 0.25;        // strength of the occasional ambient pluck
+  const IDLE = 0.35;        // strength of the occasional ambient pluck
   const IDLE_WIDTH = 140;   // px
-  const PULL = 0.0015;      // how hard the string follows a nearby pointer
+  const PULL = 0.003;       // how hard the string follows a nearby pointer
   const PULL_REACH = 90;    // px along the string the pointer's pull spreads over
   const SPEED = 0.14;       // wave speed; lower = slower, lazier waves
-  const DAMP = 0.012;       // higher settles faster
+  const SPRING = 0.0018;    // pull back toward the rest line; higher = faster bounce
+  const DAMP = 0.006;       // lower = more rebounds before it settles
   const EDGE_DAMP = 0.08;   // extra damping near the ends so waves fade out
   const EDGE_FRAC = 0.2;    //   instead of echoing back (fraction of length)
   const MIN_GAIN = 0.75;    // phone strength relative to desktop
@@ -171,7 +172,7 @@ h1 {
     const cy = H / 2;
     const reachY2 = (80 * scale) * (80 * scale), pull = PULL * gain;
     for (let i = 1; i < N - 1; i++) {
-      let a = SPEED * (y[i - 1] - 2 * y[i] + y[i + 1]) - damp[i] * v[i] - 0.0004 * y[i];
+      let a = SPEED * (y[i - 1] - 2 * y[i] + y[i + 1]) - damp[i] * v[i] - SPRING * y[i];
       if (pointer.power > 0.002) {
         const dx = ((i / (N - 1)) * W - pointer.x) / PULL_REACH;
         const dist = pointer.y - (cy + y[i]);
