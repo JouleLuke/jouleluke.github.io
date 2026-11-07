@@ -103,8 +103,17 @@ h1 {
   const ctx = canvas.getContext("2d");
   const reduce = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
   const pointer = { x: 0, y: 0, on: false, power: 0 };
-  let W = 0, H = 0, N = 0, y, v, acc, grads, gradW = -1;
-  let last = null, idle = 0, nextIdle = 1.2, flip = 1;
+
+  // Feel. Forces are tuned for a 360px-tall beam box and scaled down by
+  // `gain` in shorter boxes (phones) so motion stays proportional.
+  const TAP = 1.6;          // pluck strength on click/tap
+  const IDLE = 0.9;         // strength of the occasional ambient pluck
+  const PULL = 0.0025;      // how hard the string follows a nearby pointer
+  const DAMP = 0.012;       // higher settles faster
+  const SUBSTEPS_PER_SEC = 240; // fixed physics rate, independent of refresh rate
+
+  let W = 0, H = 0, N = 0, y, v, acc, grads, gradW = -1, gain = 1;
+  let last = null, idle = 0, nextIdle = 1.2, flip = 1, simTime = 0;
 
   function resize() {
     const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -115,6 +124,7 @@ h1 {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     W = w;
     H = h;
+    gain = Math.max(0.4, Math.min(1, h / 360));
     const n = Math.max(60, Math.min(420, Math.round(w / 4)));
     if (!y || y.length !== n) {
       y = new Float32Array(n);
@@ -141,23 +151,23 @@ h1 {
     }
   }
 
-  // A damped wave equation; the pointer drags the string while it is near.
+  // One substep of a damped wave equation; the pointer drags the string while
+  // it is near. The pointer's reach shrinks with the box on small screens.
   function step() {
-    const cy = H / 2, c2 = 0.22, damp = 0.006;
-    for (let s = 0; s < 4; s++) {
-      for (let i = 1; i < N - 1; i++) {
-        let a = c2 * (y[i - 1] - 2 * y[i] + y[i + 1]) - damp * v[i] - 0.0004 * y[i];
-        if (pointer.power > 0.002) {
-          const dx = ((i / (N - 1)) * W - pointer.x) / 70;
-          const dist = pointer.y - (cy + y[i]);
-          a += dist * 0.005 * pointer.power * Math.exp(-dx * dx) * Math.exp(-(dist * dist) / 6400);
-        }
-        acc[i] = a;
+    const cy = H / 2, c2 = 0.22;
+    const reachX = 70 * gain, reachY2 = (80 * gain) * (80 * gain), pull = PULL * gain;
+    for (let i = 1; i < N - 1; i++) {
+      let a = c2 * (y[i - 1] - 2 * y[i] + y[i + 1]) - DAMP * v[i] - 0.0004 * y[i];
+      if (pointer.power > 0.002) {
+        const dx = ((i / (N - 1)) * W - pointer.x) / reachX;
+        const dist = pointer.y - (cy + y[i]);
+        a += dist * pull * pointer.power * Math.exp(-dx * dx) * Math.exp(-(dist * dist) / reachY2);
       }
-      for (let i = 1; i < N - 1; i++) {
-        v[i] += acc[i];
-        y[i] += v[i];
-      }
+      acc[i] = a;
+    }
+    for (let i = 1; i < N - 1; i++) {
+      v[i] += acc[i];
+      y[i] += v[i];
     }
   }
 
@@ -175,7 +185,8 @@ h1 {
     const t = reduce ? 0 : ms / 1000;
     const dt = last == null ? 0.016 : Math.max(0, Math.min(0.05, t - last));
     last = t;
-    pointer.power += ((pointer.on ? 1 : 0) - pointer.power) * 0.08;
+    // Ease toward the pointer state at the same speed on 60Hz and 120Hz screens.
+    pointer.power += ((pointer.on ? 1 : 0) - pointer.power) * (1 - Math.pow(0.92, dt * 60));
 
     if (!reduce) {
       idle += dt;
@@ -184,9 +195,13 @@ h1 {
         idle = 0;
         nextIdle = 4.5 + Math.random() * 3;
         flip = -flip;
-        pluck(0.25 + Math.random() * 0.5, flip * 1.4, 60);
+        pluck(0.25 + Math.random() * 0.5, flip * IDLE * gain, 60);
       }
-      step();
+      // Fixed-rate physics: run however many substeps this frame's time covers.
+      simTime += dt;
+      let n = Math.min(12, Math.floor(simTime * SUBSTEPS_PER_SEC));
+      simTime = Math.max(0, simTime - n / SUBSTEPS_PER_SEC);
+      while (n-- > 0) step();
     }
 
     if (gradW !== W) {
@@ -235,7 +250,7 @@ h1 {
     if (reduce || !N) return;
     const i = Math.max(1, Math.min(N - 2, Math.round((pointer.x / W) * (N - 1))));
     const sign = pointer.y < H / 2 + y[i] ? -1 : 1;
-    pluck(pointer.x / W, sign * 3, 36);
+    pluck(pointer.x / W, sign * TAP * gain, 36);
     idle = 0;
   });
   canvas.addEventListener("pointerup", (e) => { if (e.pointerType !== "mouse") pointer.on = false; });
