@@ -91,8 +91,18 @@ h1 {
   .contact {
     position: absolute;
     left: 50%;
-    bottom: calc(4px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
     transform: translateX(-50%);
+    line-height: 20px;
+  }
+  /* keep a ~44px-tall tap target, extended upward so it can't cause scrolling */
+  .contact::before {
+    content: "";
+    position: absolute;
+    top: -24px;
+    bottom: 0;
+    left: -12px;
+    right: -12px;
   }
 }
 </style>
