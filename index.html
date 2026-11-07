@@ -106,13 +106,19 @@ h1 {
 
   // Feel. Forces are tuned for a 360px-tall beam box and scaled down by
   // `gain` in shorter boxes (phones) so motion stays proportional.
-  const TAP = 1.6;          // pluck strength on click/tap
-  const IDLE = 0.9;         // strength of the occasional ambient pluck
-  const PULL = 0.0025;      // how hard the string follows a nearby pointer
+  const TAP = 0.4;          // pluck strength on click/tap
+  const TAP_WIDTH = 110;    // px; wider = longer, smoother waves
+  const IDLE = 0.25;        // strength of the occasional ambient pluck
+  const IDLE_WIDTH = 140;   // px
+  const PULL = 0.0015;      // how hard the string follows a nearby pointer
+  const PULL_REACH = 90;    // px along the string the pointer's pull spreads over
+  const SPEED = 0.14;       // wave speed; lower = slower, lazier waves
   const DAMP = 0.012;       // higher settles faster
+  const EDGE_DAMP = 0.08;   // extra damping near the ends so waves fade out
+  const EDGE_FRAC = 0.2;    //   instead of echoing back (fraction of length)
   const SUBSTEPS_PER_SEC = 240; // fixed physics rate, independent of refresh rate
 
-  let W = 0, H = 0, N = 0, y, v, acc, grads, gradW = -1, gain = 1;
+  let W = 0, H = 0, N = 0, y, v, acc, damp, grads, gradW = -1, gain = 1;
   let last = null, idle = 0, nextIdle = 1.2, flip = 1, simTime = 0;
 
   function resize() {
@@ -130,6 +136,11 @@ h1 {
       y = new Float32Array(n);
       v = new Float32Array(n);
       acc = new Float32Array(n);
+      damp = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        const e = Math.max(0, 1 - Math.min(i, n - 1 - i) / ((n - 1) * EDGE_FRAC));
+        damp[i] = DAMP + EDGE_DAMP * e * e;
+      }
     }
     N = n;
   }
@@ -152,14 +163,14 @@ h1 {
   }
 
   // One substep of a damped wave equation; the pointer drags the string while
-  // it is near. The pointer's reach shrinks with the box on small screens.
+  // it is near. Its vertical reach shrinks with the box on small screens.
   function step() {
-    const cy = H / 2, c2 = 0.22;
-    const reachX = 70 * gain, reachY2 = (80 * gain) * (80 * gain), pull = PULL * gain;
+    const cy = H / 2;
+    const reachY2 = (80 * gain) * (80 * gain), pull = PULL * gain;
     for (let i = 1; i < N - 1; i++) {
-      let a = c2 * (y[i - 1] - 2 * y[i] + y[i + 1]) - DAMP * v[i] - 0.0004 * y[i];
+      let a = SPEED * (y[i - 1] - 2 * y[i] + y[i + 1]) - damp[i] * v[i] - 0.0004 * y[i];
       if (pointer.power > 0.002) {
-        const dx = ((i / (N - 1)) * W - pointer.x) / reachX;
+        const dx = ((i / (N - 1)) * W - pointer.x) / PULL_REACH;
         const dist = pointer.y - (cy + y[i]);
         a += dist * pull * pointer.power * Math.exp(-dx * dx) * Math.exp(-(dist * dist) / reachY2);
       }
@@ -195,7 +206,7 @@ h1 {
         idle = 0;
         nextIdle = 4.5 + Math.random() * 3;
         flip = -flip;
-        pluck(0.25 + Math.random() * 0.5, flip * IDLE * gain, 60);
+        pluck(0.25 + Math.random() * 0.5, flip * IDLE * gain, IDLE_WIDTH);
       }
       // Fixed-rate physics: run however many substeps this frame's time covers.
       simTime += dt;
@@ -250,7 +261,7 @@ h1 {
     if (reduce || !N) return;
     const i = Math.max(1, Math.min(N - 2, Math.round((pointer.x / W) * (N - 1))));
     const sign = pointer.y < H / 2 + y[i] ? -1 : 1;
-    pluck(pointer.x / W, sign * TAP * gain, 36);
+    pluck(pointer.x / W, sign * TAP * gain, TAP_WIDTH);
     idle = 0;
   });
   canvas.addEventListener("pointerup", (e) => { if (e.pointerType !== "mouse") pointer.on = false; });
